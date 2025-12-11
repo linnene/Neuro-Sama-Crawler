@@ -8,12 +8,12 @@
 ## 运行测试
 
 ### 本地运行
-确保已安装 `pytest`：
+推荐使用 `uv` 运行测试：
 ```bash
-pip install pytest
+uv run pytest
 ```
 
-运行所有测试：
+或者在激活虚拟环境后运行：
 ```bash
 pytest
 ```

@@ -5,7 +5,7 @@ def main() -> int:
     """Main entry point of the application."""
     try:
         config.validate()
-        print(f"Hello from src/main.py! DB_HOST is {config.DB_HOST}")
+        print(f"Hello from src/main.py!")
     except ValueError as e:
         print(f"Configuration error: {e}", file=sys.stderr)
         return 1

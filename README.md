@@ -11,15 +11,30 @@
 ### 依赖
 - Python 3.14+
 - Docker (可选)
+- [uv](https://github.com/astral-sh/uv) (推荐用于包管理)
+
+### 配置
+本项目使用环境变量进行配置。
+1. 复制 `.env.example` 为 `.env`。
+2. 填入后端接口信息 (`BACKEND_API_URL`, `BACKEND_API_TOKEN`)。
 
 ### 安装
+使用 uv (推荐):
 ```bash
-pip install .
+uv sync
+```
+或者使用 pip:
+```bash
+pip install -e .
 ```
 
 ### 运行
 ```bash
-python main.py
+# 使用 uv
+uv run python src/main.py
+
+# 或者直接运行 (需激活虚拟环境)
+python src/main.py
 ```
 
 ## 文档

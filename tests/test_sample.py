@@ -11,13 +11,12 @@ def test_config_validation():
     # Test that validation passes with mock env vars
     # We can mock os.environ or just check default values if they exist
     # For now, let's just check that the config object exists
-    assert config.DB_HOST is not None
+    assert hasattr(config, 'BACKEND_API_URL')
 
 def test_main_output(capsys, monkeypatch):
     # Mock necessary environment variables to pass validation
-    monkeypatch.setenv("DB_PASSWORD", "test_pass")
-    monkeypatch.setenv("TWITCH_CLIENT_ID", "test_id")
-    monkeypatch.setenv("TWITCH_CLIENT_SECRET", "test_secret")
+    monkeypatch.setenv("BACKEND_API_URL", "http://test.com")
+    monkeypatch.setenv("BACKEND_API_TOKEN", "test_token")
 
     # This is a basic test to ensure main runs. 
     # In a real app, you'd test specific functions, not just the main entry point.
