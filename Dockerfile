@@ -15,4 +15,4 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir .
 
 # Run the application
-CMD ["python", "main.py"]
+CMD ["python", "src/main.py"]
