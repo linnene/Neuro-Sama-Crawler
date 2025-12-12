@@ -40,22 +40,35 @@ class DanmakuCrawler(BaseCrawler):
 
         # 4. 定时抓取弹幕元素
         last_danmaku_set = set()
+        from selenium.webdriver.common.by import By
         try:
             while self._is_running:
-                # TODO: 这里需要根据实际页面结构适配弹幕元素选择器
-                # 例如: danmaku_elements = self.driver.find_elements(By.CSS_SELECTOR, ".chat-history-panel .danmaku-item")
-                danmaku_elements = []  # <-- 需要适配: 替换为实际弹幕DOM选择器
+                # 适配B站弹幕DOM结构，提取用户名和弹幕内容
+                danmaku_elements = self.driver.find_elements(
+                    By.XPATH,
+                    '//*[@id="chat-items"]/div[contains(@class, "danmaku-item")]'
+                )
 
                 new_danmaku = []
                 for elem in danmaku_elements:
-                    # TODO: 适配弹幕内容、用户名等字段的提取
-                    text = elem.text.strip()
-                    if text and text not in last_danmaku_set:
-                        new_danmaku.append(text)
-                        last_danmaku_set.add(text)
+                    try:
+                        username_elem = elem.find_element(By.CSS_SELECTOR, 'span.user-name')
+                        content_elem = elem.find_element(By.CSS_SELECTOR, 'span.danmaku-item-right')
+                        username = username_elem.text.strip().rstrip(':')
+                        content = content_elem.text.strip()
+                        # 用用户名+内容做唯一性去重
+                        danmaku_key = f"{username}:{content}"
+                        if content and danmaku_key not in last_danmaku_set:
+                            new_danmaku.append({
+                                'username': username,
+                                'content': content
+                            })
+                            last_danmaku_set.add(danmaku_key)
+                    except Exception:
+                        continue
 
                 for danmaku in new_danmaku:
-                    logger.info(f"[Room {room_id}] 弹幕: {danmaku}")
+                    logger.info(f"[Room {room_id}] 弹幕: {danmaku['username']} : {danmaku['content']}")
 
                 # 控制弹幕缓存大小，防止内存泄漏
                 if len(last_danmaku_set) > 5000:
