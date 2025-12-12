@@ -94,9 +94,6 @@ class DanmakuCrawler(BaseCrawler):
                     # await self.pipeline.send(danmaku)
 
                 # 更新已处理集合
-                # 关键逻辑：只保留当前页面上存在的 ID。
-                # 因为旧弹幕会被 B 站前端移除 DOM，我们也不需要再记住它们了。
-                # 这样既能防止重复（当前页面内），又能自动清理内存。
                 seen_cts = current_cts
 
                 await asyncio.sleep(0.5)
