@@ -1,0 +1,27 @@
+# 忽略本地虚拟环境和缓存
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# 忽略测试缓存
+.pytest_cache/
+
+# 忽略本地环境变量文件（如不想打包进镜像可加上）
+.env
+
+# 忽略IDE和编辑器配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略日志和临时文件
+*.log
+*.tmp
+*.bak
+
+# 其他不需要的文件夹或文件可按需添加
