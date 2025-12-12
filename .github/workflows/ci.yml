@@ -11,6 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     container:
       image: selenium/standalone-chrome:latest
+      options: --user root
 
     steps:
     - uses: actions/checkout@v4
@@ -23,10 +24,6 @@ jobs:
 
     - name: Set up Python
       run: uv python install 3.14
-
-    - name: Switch to root user
-      run: |
-        sudo su
 
     - name: Install dependencies
       run: uv sync --all-extras --dev
