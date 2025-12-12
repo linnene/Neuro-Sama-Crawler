@@ -44,6 +44,8 @@
 - **弹幕爬虫 (Crawler)**:
     - 实现 `DanmakuCrawler`，基于 Selenium 和 Headless Chrome。
     - 适配 Bilibili 直播间弹幕 DOM 结构，支持提取用户名和内容。
+    - **性能优化**: 引入 JavaScript 注入 (`execute_script`) 批量提取弹幕，替代低效的 Python 循环查找。
+    - **内存优化**: 实现基于 DOM 状态的自动内存管理，利用 `data-ct` 唯一标识符进行智能去重和过期清理。
     - 支持 Docker 环境下的无头模式运行。
 - **Docker 支持**:
     - 切换基础镜像为 `selenium/standalone-chrome`，内置 Chrome 和 WebDriver。
