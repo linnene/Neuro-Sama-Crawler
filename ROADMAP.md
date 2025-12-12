@@ -11,10 +11,10 @@
 - [x] 直播间监控模块 (Monitor)
     - [x] Bilibili API 对接
     - [x] 多直播间配置支持
-- [ ] 弹幕爬取模块 (Crawler)
-    - [ ] WebSocket 连接
-    - [ ] 协议解析 (ProtoBuf/Brotli)
-    - [ ] 心跳维持
+- [x] 弹幕爬取模块 (Crawler)
+    - [x] Selenium + Headless Chrome 基础架构
+    - [x] Bilibili 弹幕 DOM 解析
+    - [x] Docker 环境适配
 - [ ] 数据前处理 (Preprocessor)
 - [ ] 数据传输管道 (Pipeline)
 

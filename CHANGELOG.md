@@ -37,3 +37,22 @@
 ### Changed
 - 优化 `get_room_info` 返回字段，移除冗余的 `user_cover`。
 - 重构 `main.py` 引入 `asyncio` 和模块初始化逻辑。
+
+## [0.3.0] - 2025-12-12
+
+### Added
+- **弹幕爬虫 (Crawler)**:
+    - 实现 `DanmakuCrawler`，基于 Selenium 和 Headless Chrome。
+    - 适配 Bilibili 直播间弹幕 DOM 结构，支持提取用户名和内容。
+    - 支持 Docker 环境下的无头模式运行。
+- **Docker 支持**:
+    - 切换基础镜像为 `selenium/standalone-chrome`，内置 Chrome 和 WebDriver。
+    - 优化 Dockerfile，支持 `uv` 依赖安装和构建时测试。
+    - 新增 `.dockerignore` 减少构建上下文。
+- **测试工具**:
+    - 新增 `docker_test.py` 用于 Docker 环境下的冒烟测试。
+    - 移除 `httpx`、`websockets` 等不再使用的依赖，引入 `selenium`、`webdriver-manager`。
+
+### Changed
+- 爬虫策略从 WebSocket 协议分析转向 Selenium 页面自动化，以应对 API 限制。
+- 更新 CI 流程，修复权限问题，确保测试在 Docker 容器中正确运行。
