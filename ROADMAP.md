@@ -8,9 +8,15 @@
 - [x] 基础配置模块 (Config)
 
 ## 阶段 2: 核心爬虫功能 (进行中)
-- [ ] 直播源连接
-- [ ] 数据解析
-- [ ] 数据存储
+- [x] 直播间监控模块 (Monitor)
+    - [x] Bilibili API 对接
+    - [x] 多直播间配置支持
+- [ ] 弹幕爬取模块 (Crawler)
+    - [ ] WebSocket 连接
+    - [ ] 协议解析 (ProtoBuf/Brotli)
+    - [ ] 心跳维持
+- [ ] 数据前处理 (Preprocessor)
+- [ ] 数据传输管道 (Pipeline)
 
 ## 阶段 3: 数据分析与展示
 - [ ] 数据清洗

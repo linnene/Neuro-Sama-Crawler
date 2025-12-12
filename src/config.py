@@ -16,8 +16,8 @@ class Config:
     BACKEND_API_TOKEN = os.getenv("BACKEND_API_TOKEN", "")
 
     # Live room configuration
-    Bil_live_Root_url ="https://live.bilibili.com/"
-    room_id = []
+    BILIBILI_LIVE_API_URL = "https://api.live.bilibili.com/room/v1/Room/get_info"
+    BILIBILI_ROOM_IDS = os.getenv("BILIBILI_ROOM_IDS", "").split(",") if os.getenv("BILIBILI_ROOM_IDS") else []
 
     @classmethod
     def validate(cls):

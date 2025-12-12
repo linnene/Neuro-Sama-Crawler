@@ -10,7 +10,6 @@ class BaseMonitor(ABC):
     @abstractmethod
     async def check_status(self, room_id: str) -> bool:
         """
-        检查指定房间是否正在直播
         :param room_id: 房间号
         :return: True if live, False otherwise
         """
