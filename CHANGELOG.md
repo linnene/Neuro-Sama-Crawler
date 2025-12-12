@@ -58,3 +58,21 @@
 ### Changed
 - 爬虫策略从 WebSocket 协议分析转向 Selenium 页面自动化，以应对 API 限制。
 - 更新 CI 流程，修复权限问题，确保测试在 Docker 容器中正确运行。
+
+## [0.4.0] - 2025-12-12
+
+### Added
+- **通知模块 (Notifier)**:
+    - 新增 `AudioServiceNotifier`，用于向外部音频服务发送 Webhook 通知。
+    - 支持 `start` 和 `stop` 动作，实现直播状态与录音服务的联动。
+- **主流程重构**:
+    - 重构 `main.py`，实现完整的监控循环。
+    - 支持多房间状态管理，自动处理开播/下播事件。
+    - 集成 `Notifier`，在开播时自动通知音频服务，下播时自动停止。
+- **配置更新**:
+    - 新增 `AUDIO_SERVICE_URL` 配置项。
+- **测试**:
+    - 新增 `tests/test_notifier.py`，覆盖通知模块的各种场景。
+
+### Planned
+- **Neuro-Audio-Worker**: 计划开发独立的音频微服务，负责拉流、提取音频和语音转文字 (Whisper)。
