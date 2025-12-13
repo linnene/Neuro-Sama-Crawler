@@ -1,5 +1,7 @@
 
+# coding=utf-8
 from .base import BaseCrawler
+
 import logging
 import asyncio
 from selenium import webdriver
