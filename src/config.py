@@ -19,12 +19,6 @@ class Config:
     BILIBILI_LIVE_API_URL = "https://api.live.bilibili.com/room/v1/Room/get_info"
     BILIBILI_ROOM_IDS = os.getenv("BILIBILI_ROOM_IDS", "").split(",") if os.getenv("BILIBILI_ROOM_IDS") else []
 
-    # External Service Webhooks
-    # URL to notify when recording should start/stop (e.g., the Audio Worker service)
-    AUDIO_SERVICE_URL = os.getenv("AUDIO_SERVICE_URL")
-    # Master switch for audio service notification (default: True if URL is set)
-    ENABLE_AUDIO_SERVICE = os.getenv("ENABLE_AUDIO_SERVICE", "true").lower() == "true"
-
     @classmethod
     def validate(cls):
         """Validate required configuration variables."""

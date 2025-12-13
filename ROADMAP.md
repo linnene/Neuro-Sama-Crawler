@@ -18,15 +18,13 @@
 - [ ] 数据前处理 (Preprocessor)
 - [ ] 数据传输管道 (Pipeline)
 
-## 阶段 3: 微服务扩展 (计划中)
-- [x] 通知模块 (Notifier)
-    - [x] Webhook 接口实现
-    - [x] 联动控制逻辑
-- [ ] 音频微服务 (Neuro-Audio-Worker)
-    - [ ] 独立项目搭建
-    - [ ] Streamlink 拉流
-    - [ ] Faster-Whisper 集成
-    - [ ] GPU 环境适配
+## 阶段 3: 音频采集 (计划中)
+- [ ] 本地录制模块 (Recorder)
+    - [ ] 集成 Streamlink
+    - [ ] 自动录制直播流 (.flv/.mp4)
+- [ ] 离线处理脚本
+    - [ ] Whisper 语音转文字
+    - [ ] 弹幕与语音时间戳对齐
 
 ## 阶段 4: 数据分析与展示
 - [ ] 数据清洗

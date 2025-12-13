@@ -59,6 +59,15 @@
 - 爬虫策略从 WebSocket 协议分析转向 Selenium 页面自动化，以应对 API 限制。
 - 更新 CI 流程，修复权限问题，确保测试在 Docker 容器中正确运行。
 
+## [0.4.1] - 2025-12-13
+
+### Removed
+- **通知模块 (Notifier)**: 移除 `AudioServiceNotifier` 及相关配置。决定放弃微服务架构，转而采用本地录制方案。
+- **微服务规划**: 取消 `Neuro-Audio-Worker` 独立服务计划。
+
+### Changed
+- **主流程**: 移除 Webhook 通知逻辑，保留多房间监控和弹幕爬虫自动启停功能。
+
 ## [0.4.0] - 2025-12-12
 
 ### Added

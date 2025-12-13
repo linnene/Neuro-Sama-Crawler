@@ -22,8 +22,6 @@
 1. 复制 `.env.example` 为 `.env`。
 2. 填入后端接口信息 (`BACKEND_API_URL`, `BACKEND_API_TOKEN`)。
 3. 配置直播间 ID (`BILIBILI_ROOM_IDS`)。
-4. (可选) 配置音频服务 Webhook (`AUDIO_SERVICE_URL`)，用于联动录音服务。
-5. (可选) 开关音频服务联动 (`ENABLE_AUDIO_SERVICE`，默认为 true)。
 
 ### 安装
 使用 uv (推荐):

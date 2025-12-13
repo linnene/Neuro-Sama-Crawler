@@ -3,7 +3,6 @@ import asyncio
 from typing import Dict
 from config import config
 from utils import setup_logger
-from utils.notifier import AudioServiceNotifier
 from monitor import BilibiliMonitor
 from crawler import DanmakuCrawler
 from pipeline import APIClient
@@ -16,15 +15,6 @@ async def run():
     
     # Initialize modules
     monitor = BilibiliMonitor()
-    
-    # Initialize notifier only if enabled and URL is configured
-    audio_url = config.AUDIO_SERVICE_URL if config.ENABLE_AUDIO_SERVICE else None
-    if audio_url:
-        logger.info(f"Audio Service integration ENABLED. Webhook: {audio_url}")
-    else:
-        logger.info("Audio Service integration DISABLED.")
-        
-    notifier = AudioServiceNotifier(audio_url)
     # pipeline = APIClient(config.BACKEND_API_URL, config.BACKEND_API_TOKEN) # TODO: Pass to crawler
     
     # State management
@@ -48,10 +38,7 @@ async def run():
                         if room_id not in active_sessions:
                             logger.info(f"Room {room_id} is LIVE! Starting services...")
                             
-                            # 1. Notify Audio Service
-                            await notifier.notify(room_id, "start")
-                            
-                            # 2. Start Danmaku Crawler
+                            # Start Danmaku Crawler
                             crawler = DanmakuCrawler()
                             # TODO: Pass pipeline to crawler
                             # crawler.pipeline = pipeline 
@@ -66,7 +53,7 @@ async def run():
                         if room_id in active_sessions:
                             logger.info(f"Room {room_id} went OFFLINE. Stopping services...")
                             
-                            # 1. Stop Danmaku Crawler
+                            # Stop Danmaku Crawler
                             session = active_sessions.pop(room_id)
                             crawler = session['crawler']
                             task = session['task']
@@ -76,9 +63,6 @@ async def run():
                                 await task
                             except asyncio.CancelledError:
                                 pass
-                                
-                            # 2. Notify Audio Service
-                            await notifier.notify(room_id, "stop")
                             
                 except Exception as e:
                     logger.error(f"Error monitoring room {room_id}: {e}")
@@ -92,8 +76,6 @@ async def run():
         # Cleanup
         for room_id, session in active_sessions.items():
             await session['crawler'].stop()
-            await notifier.notify(room_id, "stop")
-        await notifier.close()
 
 def main() -> int:
     """Main entry point of the application."""

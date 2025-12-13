@@ -24,5 +24,4 @@ pytest
 ## 测试覆盖范围
 - **Crawler**: 爬虫生命周期管理。
 - **Monitor**: Bilibili API 状态检查。
-- **Notifier**: Webhook 通知发送逻辑（Mock 测试）。
 - **Pipeline**: 数据发送逻辑。
