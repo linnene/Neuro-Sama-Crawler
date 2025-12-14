@@ -15,8 +15,12 @@
     - [x] Selenium + Headless Chrome 基础架构
     - [x] Bilibili 弹幕 DOM 解析
     - [x] Docker 环境适配
+- [x] 弹幕本地存储与文件句柄自动管理
+- [x] APIClient 支持爬虫对象注册与生命周期管理
 - [ ] 数据前处理 (Preprocessor)
 - [ ] 数据传输管道 (Pipeline)
+- [ ] 后处理与归档脚本
+- [ ] 支持批量上传与断点续传
 
 ## 阶段 3: 音频采集 (计划中)
 - [ ] 本地录制模块 (Recorder)

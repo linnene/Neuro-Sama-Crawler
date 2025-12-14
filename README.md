@@ -51,6 +51,13 @@ docker build -t neuro-sama-crawler .
 docker run --rm -it neuro-sama-crawler
 ```
 
+## 新增功能与今日进展
+
+- **弹幕本地存储**：弹幕数据采集后，先本地存储为 jsonl 文件，直播结束后可统一整理、归档或上传。
+- **Pipeline 管理**：APIClient 支持爬虫注册，自动为每个房间分配独立数据文件，生命周期内自动管理文件句柄。
+- **弹幕爬虫**：DanmakuCrawler 初始化时自动检查/创建 output 目录，并以 room_id+时间戳命名 json 文件，采集数据实时写入。
+- **Docker 构建**：可直接使用 `docker build -t neuro-sama-crawler:latest .` 构建镜像。
+
 ## 文档
 - [项目架构](ARCHITECTURE.md)
 - [扩展说明](EXTENSIONS.md)

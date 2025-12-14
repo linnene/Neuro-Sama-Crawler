@@ -85,3 +85,16 @@
 
 ### Planned
 - **Neuro-Audio-Worker**: 计划开发独立的音频微服务，负责拉流、提取音频和语音转文字 (Whisper)。
+
+## [0.5.0] - 2025-12-14
+
+### Added
+- **Pipeline 管理**:
+    - APIClient 支持 register_crawler(crawler: DanmakuCrawler)，注册后自动分配文件句柄并挂载到爬虫对象。
+    - 支持 on_crawler_stop 自动关闭文件，防止资源泄漏。
+- **弹幕本地存储**:
+    - DanmakuCrawler 启动时自动检查/创建 output 目录，并以 room_id+时间戳命名 json 文件。
+    - 采集数据实时写入本地，便于后续归档和批量上传。
+
+### Changed
+- **数据流**: 采集-本地存储-后处理-归档/上传，替代原有实时推送方案。

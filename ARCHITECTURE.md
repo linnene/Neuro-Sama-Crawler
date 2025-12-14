@@ -24,6 +24,14 @@
     - **去重机制**: 利用 Bilibili 弹幕元素的 `data-ct` 属性作为唯一标识符 (UUID)。
     - **内存管理**: 维护一个 `seen_cts` 集合，仅存储当前 DOM 树中存在的弹幕 ID。随着 B 站前端自动移除旧弹幕 DOM，爬虫也会自动释放对应的 ID 内存，无需手动设置固定大小的缓存队列，完美避免内存泄漏。
 
+## Pipeline 设计（2025-12-14 更新）
+- APIClient 负责爬虫注册、数据收集、文件句柄管理和爬虫生命周期管理。
+- 支持 register_crawler(crawler: DanmakuCrawler)，注册后自动为爬虫对象分配 _file 句柄。
+- on_crawler_stop 自动关闭文件，确保数据完整性。
+
+## 弹幕爬虫本地存储
+- DanmakuCrawler 初始化时自动创建 output 目录和唯一 json 文件，采集数据实时写入，便于后处理和归档。
+
 ## 数据流
 1. **Monitor** 轮询 Bilibili API 检查开播状态。
 2. 一旦开播，启动 **Crawler** 实例。
