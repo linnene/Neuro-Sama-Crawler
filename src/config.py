@@ -10,7 +10,9 @@ class Config:
     """
     manage application configuration from environment variables
     """
-    
+    # Output base directory
+    BASE_DIR = ROOT_DIR / "output"
+
     # backend API configuration
     BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1/danmaku")
     BACKEND_API_TOKEN = os.getenv("BACKEND_API_TOKEN", "")

@@ -13,11 +13,11 @@ async def test_crawler_lifecycle():
         mock_driver = MagicMock()
         mock_chrome.return_value = mock_driver
         
-        crawler = DanmakuCrawler()
+        crawler = DanmakuCrawler("123456")
         assert crawler._is_running is False
         
         # 启动爬虫的任务
-        task = asyncio.create_task(crawler.start("123456"))
+        task = asyncio.create_task(crawler.start())
         
         # 让它运行一小会儿
         # 因为 start 中有 await asyncio.sleep(5)，所以这里 sleep 0.1 会让 start 跑到第一个 await 处挂起

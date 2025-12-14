@@ -2,9 +2,11 @@
 # coding=utf-8
 from .base import BaseCrawler
 
+import json
 import logging
 import asyncio
 from selenium import webdriver
+from typing import Optional,Callable, Awaitable,IO
 from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
@@ -15,13 +17,19 @@ class DanmakuCrawler(BaseCrawler):
     """
     基于 Selenium 的弹幕爬虫实现
     """
-    def __init__(self):
+    def __init__(self,room_id:str) -> None:
+        self.room_id: str = room_id
         self._is_running = False
         self.driver = None
+        self._file: IO | None = None
 
-    async def start(self, room_id: str):
+        #用于爬虫停止时的回调
+        self.on_stop: Optional[Callable[[str], Awaitable[None]]] = None
+
+    async def start(self):
         self._is_running = True
-        logger.info(f"Starting selenium danmaku crawler for room {room_id}")
+        logger.info(f"Starting selenium danmaku crawler for room {self.room_id}")
+
         # 1. 初始化 headless Chrome
         chrome_options = Options()
         chrome_options.add_argument('--headless')
@@ -33,7 +41,7 @@ class DanmakuCrawler(BaseCrawler):
         self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
         # 2. 访问直播间页面
-        url = f"https://live.bilibili.com/{room_id}"
+        url = f"https://live.bilibili.com/{self.room_id}"
         self.driver.get(url)
         logger.info(f"Opened {url}")
 
@@ -91,9 +99,10 @@ class DanmakuCrawler(BaseCrawler):
 
                 # 处理新弹幕
                 for danmaku in new_danmaku_list:
-                    logger.info(f"[Room {room_id}] 弹幕: {danmaku['username']} : {danmaku['content']}")
-                    # TODO: 这里调用 pipeline 发送数据到后端
-                    # await self.pipeline.send(danmaku)
+                    logger.info(f"[Room {self.room_id}] 弹幕: {danmaku['username']} : {danmaku['content']}")
+                    # TODO: 直接写入文件，本地存储
+                    await self.collect(danmaku, self.room_id)
+
 
                 # 更新已处理集合
                 seen_cts = current_cts
@@ -102,17 +111,32 @@ class DanmakuCrawler(BaseCrawler):
         except Exception as e:
             logger.error(f"Danmaku crawler error: {e}")
         finally:
-            self.stop_driver()
+            await self.stop()
+            if self.on_stop:
+                await self.on_stop(self.room_id)
+
 
     async def stop(self):
         self._is_running = False
         logger.info("Stopping danmaku crawler")
-        self.stop_driver()
-
-    def stop_driver(self):
         if self.driver:
             try:
                 self.driver.quit()
             except Exception:
                 pass
             self.driver = None
+
+
+    async def collect(self, danmaku: dict, room_id: str):
+        """
+        收集弹幕数据并写入对应文件
+        这里假设 danmaku 是一个字典，包含弹幕的相关信息
+        """
+        #TODO:对接danmaku数据结构
+        f = self._file
+        if not f:
+            logger.error(f"No file handle for crawler_id {room_id}")
+            return
+        
+        f.write(json.dumps(danmaku, ensure_ascii=False) + "\n")
+        f.flush()
