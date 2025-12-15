@@ -15,6 +15,7 @@ async def run():
     
     # Initialize modules
     monitor = BilibiliMonitor()
+    cilent = APIClient()
     # pipeline = APIClient(config.BACKEND_API_URL, config.BACKEND_API_TOKEN) # TODO: Pass to crawler
     
     # State management
@@ -35,15 +36,17 @@ async def run():
                     is_live = await monitor.check_status(room_id)
                     
                     if is_live:
+                        #TODO:更改爬虫生命周期管理逻辑，使用APIClient管理
                         if room_id not in active_sessions:
                             logger.info(f"Room {room_id} is LIVE! Starting services...")
                             
                             # Start Danmaku Crawler
-                            crawler = DanmakuCrawler()
+                            crawler = DanmakuCrawler(room_id)
                             # TODO: Pass pipeline to crawler
+                            cilent.register_crawler(crawler)
                             # crawler.pipeline = pipeline 
                             
-                            task = asyncio.create_task(crawler.start(room_id))
+                            task = asyncio.create_task(crawler.start())
                             
                             active_sessions[room_id] = {
                                 'crawler': crawler,
@@ -58,7 +61,8 @@ async def run():
                             crawler = session['crawler']
                             task = session['task']
                             
-                            await crawler.stop()
+                            await cilent.on_crawler_stop(crawler)
+                            task.cancel()
                             try:
                                 await task
                             except asyncio.CancelledError:
@@ -75,7 +79,7 @@ async def run():
     finally:
         # Cleanup
         for room_id, session in active_sessions.items():
-            await session['crawler'].stop()
+            await cilent.on_crawler_stop(session['crawler'])
 
 def main() -> int:
     """Main entry point of the application."""

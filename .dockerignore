@@ -11,7 +11,6 @@ __pycache__/
 .pytest_cache/
 
 # 忽略本地环境变量文件（如不想打包进镜像可加上）
-.env
 
 # 忽略IDE和编辑器配置
 .vscode/

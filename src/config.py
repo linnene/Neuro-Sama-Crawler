@@ -15,7 +15,6 @@ class Config:
 
     # backend API configuration
     BACKEND_API_URL = os.getenv("BACKEND_API_URL", "http://localhost:8000/api/v1/danmaku")
-    BACKEND_API_TOKEN = os.getenv("BACKEND_API_TOKEN", "")
 
     # Live room configuration
     BILIBILI_LIVE_API_URL = "https://api.live.bilibili.com/room/v1/Room/get_info"
@@ -25,8 +24,7 @@ class Config:
     def validate(cls):
         """Validate required configuration variables."""
         required_vars = [
-            "BACKEND_API_URL", 
-            "BACKEND_API_TOKEN"
+            "BACKEND_API_URL"
         ]
         missing = [var for var in required_vars if not getattr(cls, var)]
         if missing:
