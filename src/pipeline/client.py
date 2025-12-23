@@ -1,6 +1,8 @@
 import os
 import logging
+import asyncio
 from typing import Optional
+from pathlib import Path
 from crawler.danmaku import DanmakuCrawler
 
 from config import config
@@ -61,6 +63,36 @@ class APIClient:
             crawler.stop
 
     async def send_data(self):
-        #TODO: 可以决定是否启用，自动每天结束之后，将收集的所有数据发送到后端API
-        #可以编写shell使用scp
-        pass
+            """
+            调用 shell 脚本，将本地 output 目录中的数据推送出去
+            """
+            script_path = Path(config.PUSH_SCRIPT_PATH)
+
+            if not script_path.exists():
+                logger.error(f"Push script not found: {script_path}")
+                return
+
+            logger.info("Starting data push via shell script...")
+
+            try:
+                process = await asyncio.create_subprocess_exec(
+                    str(script_path),
+                    stdout=asyncio.subprocess.PIPE,
+                    stderr=asyncio.subprocess.PIPE,
+                )
+
+                stdout, stderr = await process.communicate()
+
+                if process.returncode != 0:
+                    logger.error("Data push failed")
+                    if stdout:
+                        logger.error(stdout.decode())
+                    if stderr:
+                        logger.error(stderr.decode())
+                else:
+                    logger.info("Data push completed successfully")
+                    if stdout:
+                        logger.debug(stdout.decode())
+
+            except Exception:
+                logger.exception("Failed to execute push script")

@@ -169,6 +169,12 @@ wheels = [
 ]
 
 [[package]]
+name = "ffmpeg"
+version = "1.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f0/cc/3b7408b8ecf7c1d20ad480c3eaed7619857bf1054b690226e906fdf14258/ffmpeg-1.4.tar.gz", hash = "sha256:6931692c890ff21d39938433c2189747815dca0c60ddc7f9bb97f199dba0b5b9", size = 5055, upload-time = "2018-10-08T07:50:05.748Z" }
+
+[[package]]
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -316,6 +322,7 @@ source = { editable = "." }
 dependencies = [
     { name = "aiohttp" },
     { name = "aioresponses" },
+    { name = "ffmpeg" },
     { name = "httpx" },
     { name = "python-dotenv" },
     { name = "selenium" },
@@ -332,6 +339,7 @@ dev = [
 requires-dist = [
     { name = "aiohttp", specifier = ">=3.13.2" },
     { name = "aioresponses", specifier = ">=0.7.8" },
+    { name = "ffmpeg", specifier = ">=1.4" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "python-dotenv", specifier = ">=1.0.0" },
     { name = "selenium", specifier = ">=4.0.0" },

@@ -19,4 +19,4 @@ RUN uv sync --all-extras --dev
 RUN uv run pytest
 
 # 生产环境启动主程序
-CMD ["uv", "run", "python", "src/main.py"]
+CMD ["uv", "run", "python", "src/test.py"]

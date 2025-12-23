@@ -5,6 +5,8 @@ from .base import BaseCrawler
 import json
 import logging
 import asyncio
+from datetime import datetime
+from zoneinfo import ZoneInfo
 from selenium import webdriver
 from typing import Optional,Callable, Awaitable,IO
 from selenium.webdriver.chrome.options import Options
@@ -53,7 +55,8 @@ class DanmakuCrawler(BaseCrawler):
 
         try:
             while self._is_running:
-                # 使用 JavaScript 直接提取所有弹幕数据，效率远高于 Python 循环 find_element
+                # Use JavaScript to directly extract all barrage data,
+                # which is much more efficient than the Python loop find_element
                 # 返回结构: [{'uname': 'xxx', 'content': 'xxx', 'ct': 'xxx'}, ...]
                 script = """
                 const items = document.querySelectorAll('#chat-items .danmaku-item');
@@ -93,6 +96,7 @@ class DanmakuCrawler(BaseCrawler):
                         if uname and content:
                             new_danmaku_list.append({
                                 'username': uname,
+                                'speaker': "chat",
                                 'content': content,
                                 'ct': ct
                             })
@@ -100,7 +104,7 @@ class DanmakuCrawler(BaseCrawler):
                 # 处理新弹幕
                 for danmaku in new_danmaku_list:
                     logger.info(f"[Room {self.room_id}] 弹幕: {danmaku['username']} : {danmaku['content']}")
-                    # TODO: 直接写入文件，本地存储
+                    # TODO: 直接写入文件，本地存储-[√]
                     await self.collect(danmaku, self.room_id)
 
 
@@ -131,12 +135,16 @@ class DanmakuCrawler(BaseCrawler):
         """
         收集弹幕数据并写入对应文件
         这里假设 danmaku 是一个字典，包含弹幕的相关信息
+        写入时自动过滤 ct 字段，并增加 now 字段（当前时间）
         """
-        #TODO:对接danmaku数据结构
         f = self._file
         if not f:
             logger.error(f"No file handle for crawler_id {room_id}")
             return
+        now_str = datetime.now(ZoneInfo("Asia/Shanghai"))
+        # 过滤 ct 字段并加 now 字段
+        to_write = {k: v for k, v in danmaku.items() if k != "ct"}
+        to_write["data_ct"] = now_str.isoformat()
         
-        f.write(json.dumps(danmaku, ensure_ascii=False) + "\n")
+        f.write(json.dumps(to_write, ensure_ascii=False) + "\n")
         f.flush()

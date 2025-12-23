@@ -1,6 +1,7 @@
 from .base import BaseAudioCrawler
 import logging
 import aiohttp
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -15,22 +16,27 @@ class AudioCrawler(BaseAudioCrawler):
         self.room_id: int | None = None      # 规范化后的真实 room_id
         self.is_running: bool = False
 
-    async def start(self):
+    async def start(self) -> dict:
         """
         start 的 Docstring
         
         :param self: 说明
         """
         if self.is_running:
-            return
+            logger.warning("Audio crawler is already running")
+            return {}
+        
 
         if self.room_id is None:
             await self.fetch_room_id()
-        
-        json_out = self.fetch_flv_avc_stream()
+
+        # fetch_flv_avc_stream 是 coroutine，需要 await
+        json_out = await self.fetch_flv_avc_stream()
 
         self.is_running = True
 
+        return json_out
+    
     async def stop(self):
         pass
 
@@ -44,11 +50,7 @@ class AudioCrawler(BaseAudioCrawler):
         url = "https://api.live.bilibili.com/room/v1/Room/get_info"
         params = {"room_id": self.origin_room_id}
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status != 200:
-                    raise RuntimeError(f"HTTP 请求失败，状态码: {resp.status}")
-                data = await resp.json()
+        data = await self._fetch_json(url, params)
 
         if data.get("code") != 0:
             raise RuntimeError(f"接口返回错误: {data.get('msg')}")
@@ -76,11 +78,7 @@ class AudioCrawler(BaseAudioCrawler):
             "codec": "0,1",
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.get(url, params=params) as resp:
-                if resp.status != 200:
-                    raise RuntimeError(f"HTTP 请求失败，状态码: {resp.status}")
-                data = await resp.json()
+        data = await self._fetch_json(url, params)
 
         if data.get("code") != 0:
             raise RuntimeError(f"接口返回错误: {data.get('message')}")
@@ -110,7 +108,11 @@ class AudioCrawler(BaseAudioCrawler):
                         continue
 
                     first = url_info[0]
+                    
+                    URL = first["host"] + codec["base_url"] + first["extra"]
 
+                    print("URL:", URL)
+                    
                     return {
                         "protocol": "http_stream",
                         "format": "flv",
@@ -119,6 +121,7 @@ class AudioCrawler(BaseAudioCrawler):
                         "base_url": codec["base_url"],
                         "extra": first["extra"],
                     }
+
 
         raise RuntimeError("未找到可用的 http_stream + flv + avc 播放流")
 
@@ -131,3 +134,45 @@ class AudioCrawler(BaseAudioCrawler):
         1. 用异步 HTTP 持续读取字节流
         """
         yield b""  
+
+    async def _fetch_json(self, url: str, params: dict | None = None, max_retries: int = 3, timeout: int = 10) -> dict:
+        """
+        使用带浏览器头的请求去获取 JSON，包含重试和退避策略，减少被 WAF/反爬阻断（如 412）的问题。
+        """
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "zh-CN,zh;q=0.9",
+            "Referer": f"https://live.bilibili.com/{self.origin_room_id}",
+            "Origin": "https://live.bilibili.com",
+        }
+
+        attempt = 0
+        while attempt < max_retries:
+            attempt += 1
+            try:
+                timeout_obj = aiohttp.ClientTimeout(total=timeout)
+                async with aiohttp.ClientSession(timeout=timeout_obj) as session:
+                    async with session.get(url, params=params, headers=headers) as resp:
+                        text = await resp.text()
+                        if resp.status != 200:
+                            logger.warning("Request to %s returned status %s (attempt %d/%d): %s", url, resp.status, attempt, max_retries, text[:200])
+                            # 对 4xx/5xx 做重试（可根据需要调整）
+                            if attempt >= max_retries:
+                                raise RuntimeError(f"HTTP 请求失败，状态码: {resp.status}")
+                            await asyncio.sleep(1 + attempt)
+                            continue
+
+                        try:
+                            return await resp.json()
+                        except Exception:
+                            # 如果解析 JSON 失败，抛出包含文本的异常以便诊断
+                            raise RuntimeError(f"无法解析 JSON 响应: {text[:500]}")
+
+            except Exception as exc:
+                logger.warning("请求 %s 出错 (attempt %d/%d): %s", url, attempt, max_retries, exc)
+                if attempt >= max_retries:
+                    raise
+                await asyncio.sleep(1 + attempt)
+
+        raise RuntimeError("达到最大重试次数但未成功获取数据")

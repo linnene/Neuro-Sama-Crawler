@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
+
 load_dotenv(ROOT_DIR / ".env")
 
 class Config:
@@ -19,6 +20,9 @@ class Config:
     # Live room configuration
     BILIBILI_LIVE_API_URL = "https://api.live.bilibili.com/room/v1/Room/get_info"
     BILIBILI_ROOM_IDS = os.getenv("BILIBILI_ROOM_IDS", "").split(",") if os.getenv("BILIBILI_ROOM_IDS") else []
+
+
+    PUSH_SCRIPT_PATH = os.getenv("PUSH_SCRIPT_PATH", str(ROOT_DIR / "scripts" / "scp.sh"))
 
     @classmethod
     def validate(cls):
