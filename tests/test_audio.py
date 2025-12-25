@@ -79,6 +79,8 @@ async def test_fetch_flv_avc_stream_success():
         )
 
         stream_info = await crawler.fetch_flv_avc_stream()
+        if not stream_info:
+            pytest.fail("Expected stream_info, got empty dict")
         assert stream_info["protocol"] == "http_stream"
         assert stream_info["format"] == "flv"
         assert stream_info["codec"] == "avc"

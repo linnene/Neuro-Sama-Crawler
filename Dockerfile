@@ -2,6 +2,7 @@
 # 使用官方 Python 镜像
 FROM selenium/standalone-chrome:latest
 
+
 # 设置工作目录
 WORKDIR /app
 
@@ -9,6 +10,8 @@ WORKDIR /app
 COPY . /app
 
 USER root
+
+RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
 # 安装 uv
 RUN pip install --no-cache-dir uv
 
@@ -19,4 +22,4 @@ RUN uv sync --all-extras --dev
 RUN uv run pytest
 
 # 生产环境启动主程序
-CMD ["uv", "run", "python", "src/test.py"]
+CMD ["uv", "run", "python", "src/main.py"]
