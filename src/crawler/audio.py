@@ -5,6 +5,7 @@ import asyncio
 import subprocess
 import shutil
 
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -15,10 +16,12 @@ class AudioCrawler(BaseAudioCrawler):
     """
 #------------------------------------------------------------------------------
 
-    def __init__(self, room_id: int) -> None:
+    def __init__(self, room_id: int, output_path:Path) -> None:
         self.origin_room_id: int = room_id   # 用户传入的
         self.room_id: int | None = None      # 规范化后的真实 room_id
         self.is_running: bool = False
+        self.output_path = output_path
+
         # 临时流url
         self.url = None
 
@@ -202,7 +205,9 @@ class AudioCrawler(BaseAudioCrawler):
     
 
     async def FFmpeg_init(self):
-        
+
+        output_path = self.prepare_output_path("wav")
+
         if not self.url:
             raise RuntimeError("FFmpeg 初始化失败：url 为空")
 
@@ -221,13 +226,17 @@ class AudioCrawler(BaseAudioCrawler):
         )
 
         cmd = [
-            getattr(self, "ffmpeg_path", "ffmpeg"),
+            self.ffmpeg_path,
             "-loglevel", "info",
             "-fflags", "nobuffer",
             "-headers", headers,
             "-i", self.url,
-            "-f", "null",
-            "-"
+
+            "-map", "0:a:0",
+            "-acodec", "pcm_s16le",
+            "-ar", "48000",
+            
+            str(output_path)
         ]
 
         logger.info("启动 FFmpeg: %s", " ".join(cmd))
@@ -252,6 +261,7 @@ class AudioCrawler(BaseAudioCrawler):
 
 
     async def FFmpeg_stop(self) -> None:
+
         """
         释放 FFmpeg 资源
         终止子进程
@@ -298,3 +308,9 @@ class AudioCrawler(BaseAudioCrawler):
 
         self.ffmpeg_process = None
         logger.info("FFmpeg 已停止")
+
+    def prepare_output_path(self, suffix: str = "wav") -> Path:
+
+        path = self.output_path / f"room_{self.origin_room_id}.{suffix}"
+
+        return path

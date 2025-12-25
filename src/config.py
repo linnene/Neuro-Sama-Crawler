@@ -24,6 +24,8 @@ class Config:
 
     PUSH_SCRIPT_PATH = os.getenv("PUSH_SCRIPT_PATH", str(ROOT_DIR / "scripts" / "scp.sh"))
 
+    Audio_output_DIR = ROOT_DIR / "Audio_output"
+    
     @classmethod
     def validate(cls):
         """Validate required configuration variables."""

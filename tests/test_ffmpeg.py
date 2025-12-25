@@ -3,11 +3,12 @@ import pytest
 import asyncio
 import crawler.audio as audio_module
 from crawler.audio import AudioCrawler
+from config import Config
 
 
 @pytest.mark.asyncio
 async def test_FFmeg_init_url_empty():
-    crawler = AudioCrawler(room_id=123)
+    crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
     crawler.url = None
 
     with pytest.raises(RuntimeError, match="url 为空"):
@@ -16,7 +17,7 @@ async def test_FFmeg_init_url_empty():
 
 @pytest.mark.asyncio
 async def test_FFmeg_init_already_initialized():
-    crawler = AudioCrawler(room_id=123)
+    crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
     crawler.url = "http://example.com/stream"
     crawler.ffmpeg_process = object()
 
@@ -26,7 +27,7 @@ async def test_FFmeg_init_already_initialized():
 
 @pytest.mark.asyncio
 async def test_FFmeg_init_no_ffmpeg(monkeypatch):
-    crawler = AudioCrawler(room_id=123)
+    crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
     crawler.url = "http://example.com/stream"
 
     # 模拟找不到 ffmpeg
@@ -49,7 +50,7 @@ class _FakePopen:
 
 @pytest.mark.asyncio
 async def test_FFmeg_init_process_crash(monkeypatch):
-    crawler = AudioCrawler(room_id=123)
+    crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
     crawler.url = "http://example.com/stream"
 
     # 模拟找到 ffmpeg
@@ -67,7 +68,7 @@ async def test_FFmeg_init_process_crash(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_FFmeg_init_success(monkeypatch):
-    crawler = AudioCrawler(room_id=123)
+    crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
     crawler.url = "http://example.com/stream"
 
     monkeypatch.setattr(audio_module.shutil, "which", lambda p: "/usr/bin/ffmpeg")
