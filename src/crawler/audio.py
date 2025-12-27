@@ -6,6 +6,7 @@ import subprocess
 import shutil
 
 from pathlib import Path
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -16,17 +17,18 @@ class AudioCrawler(BaseAudioCrawler):
     """
 #------------------------------------------------------------------------------
 
-    def __init__(self, room_id: int, output_path:Path) -> None:
+    def __init__(self, room_id: int, output_path: Path | str | None = None) -> None:
         self.origin_room_id: int = room_id   # 用户传入的
         self.room_id: int | None = None      # 规范化后的真实 room_id
         self.is_running: bool = False
-        self.output_path = output_path
+        # 兼容 None / str / Path；默认目录为 recordings
+        self.output_path = Path(output_path) if output_path is not None else Path("recordings")
 
         # 临时流url
         self.url = None
 
         self.ffmpeg_process: subprocess.Popen | None = None
-        self.ffmpeg_path: str = "D:/ffmpeg/ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe"  # 或者绝对路径
+        self.ffmpeg_path: str = "D:/ffmpeg/ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe"
         
 
     async def start(self) -> None:
@@ -72,8 +74,14 @@ class AudioCrawler(BaseAudioCrawler):
 
         data = await self._fetch_json(url, params)
 
-        if data.get("code") != 0:
-            raise RuntimeError(f"接口返回错误: {data.get('msg')}")
+        # 兼容不同接口返回格式：优先使用 'code' 字段判断错误，其次回退到 'msg' 字段
+        if "code" in data:
+            if data.get("code") != 0:
+                raise RuntimeError(f"接口返回错误: {data.get('msg')}")
+        else:
+            # 如果没有 code，但 msg 明确表示错误，则抛出异常（比如 msg != 'ok'）
+            if data.get("msg") and str(data.get("msg")).lower() != "ok":
+                raise RuntimeError(f"接口返回错误: {data.get('msg')}")
 
         room_info = data.get("data")
         if not room_info or "room_id" not in room_info:
@@ -253,7 +261,7 @@ class AudioCrawler(BaseAudioCrawler):
         await asyncio.sleep(1)
 
         if self.ffmpeg_process.poll() is not None:
-            stderr = self.ffmpeg_process.stderr.read()
+            stderr = self.ffmpeg_process.stderr.read() # type: ignore
             self.ffmpeg_process = None
             raise RuntimeError(f"FFmpeg 启动失败:\n{stderr}")
 
@@ -309,8 +317,16 @@ class AudioCrawler(BaseAudioCrawler):
         self.ffmpeg_process = None
         logger.info("FFmpeg 已停止")
 
+
     def prepare_output_path(self, suffix: str = "wav") -> Path:
-
-        path = self.output_path / f"room_{self.origin_room_id}.{suffix}"
-
-        return path
+            p = Path(self.output_path)
+            # 生成时间戳
+            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+            # 如果提供的是文件路径（有后缀），在文件名中添加时间戳并确保后缀正确
+            if p.suffix:
+                parent = p.parent
+                name = f"{p.stem}_{ts}.{suffix}"
+                return parent / name
+            # 否则按目录处理，生成 room_{origin_room_id}_{timestamp}.suffix
+            return p / f"room_{self.origin_room_id}_{ts}.{suffix}"
+    

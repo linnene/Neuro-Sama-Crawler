@@ -7,7 +7,6 @@ from crawler.audio import AudioCrawler
 async def test_fetch_room_id_success():
     crawler = AudioCrawler(room_id=123456)
     mock_json = {
-        "code": 0,
         "msg": "ok",
         "data": {"room_id": 654321}
     }
