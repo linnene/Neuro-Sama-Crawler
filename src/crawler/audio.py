@@ -214,7 +214,6 @@ class AudioCrawler(BaseAudioCrawler):
 
     async def FFmpeg_init(self):
 
-        output_path = self.prepare_output_path("wav")
 
         if not self.url:
             raise RuntimeError("FFmpeg 初始化失败：url 为空")
@@ -232,6 +231,8 @@ class AudioCrawler(BaseAudioCrawler):
             "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
             f"Referer: https://live.bilibili.com/{self.origin_room_id}\r\n"
         )
+
+        output_path = self.prepare_output_path("wav")
 
         cmd = [
             self.ffmpeg_path,
@@ -256,6 +257,7 @@ class AudioCrawler(BaseAudioCrawler):
             stderr=subprocess.PIPE,
             text=True
         )
+        print(self.ffmpeg_process.stdout)
 
         # 4. 给 FFmpeg 一点时间判断它是否秒崩
         await asyncio.sleep(1)
@@ -265,7 +267,7 @@ class AudioCrawler(BaseAudioCrawler):
             self.ffmpeg_process = None
             raise RuntimeError(f"FFmpeg 启动失败:\n{stderr}")
 
-        logger.info("FFmpeg 初始化成功，进程 PID=%s", self.ffmpeg_process.pid)
+        logger.info("FFmpeg 初始化成功，进程 PID=%s,开始录制ing.....", self.ffmpeg_process.pid)
 
 
     async def FFmpeg_stop(self) -> None:
@@ -319,6 +321,7 @@ class AudioCrawler(BaseAudioCrawler):
 
 
     def prepare_output_path(self, suffix: str = "wav") -> Path:
+            logger.info("准备输出路径，原始路径: %s", self.output_path)
             p = Path(self.output_path)
             # 生成时间戳
             ts = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -328,5 +331,5 @@ class AudioCrawler(BaseAudioCrawler):
                 name = f"{p.stem}_{ts}.{suffix}"
                 return parent / name
             # 否则按目录处理，生成 room_{origin_room_id}_{timestamp}.suffix
+
             return p / f"room_{self.origin_room_id}_{ts}.{suffix}"
-    
