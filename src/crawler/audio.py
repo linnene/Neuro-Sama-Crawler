@@ -22,12 +22,17 @@ class AudioCrawler(BaseAudioCrawler):
         self.origin_room_id: int = room_id   # 用户传入的
         self.room_id: int | None = None      # 规范化后的真实 room_id
         self.is_running: bool = False
+
         # 兼容 None / str / Path；默认目录为 recordings
         self.output_path = Path(output_path) if output_path is not None else Path("recordings")
+        self.last_file_size: int = 0
+        self.last_check_time: float = 0
+        self.stagnant_threshold: int = 30  # 容忍文件不增长的最大秒数
 
         # 临时流url
         self.url: str|None = None
 
+        #ffmpeg 进程句柄
         self.ffmpeg_process: subprocess.Popen | None = None
         self.ffmpeg_path = os.getenv("FFMPEG_PATH") or shutil.which("ffmpeg") or "D:/ffmpeg/.../ffmpeg.exe"
         
@@ -38,7 +43,6 @@ class AudioCrawler(BaseAudioCrawler):
         
         :param self: 说明
         """
-
         if self.is_running:
             logger.warning("Audio crawler is already running")
             return 
@@ -62,6 +66,118 @@ class AudioCrawler(BaseAudioCrawler):
         await self.FFmpeg_stop()
 
 #------------------------------------------------------------------------------
+
+
+    async def FFmpeg_init(self):
+
+        if not self.url:
+            raise RuntimeError("FFmpeg 初始化失败：url 为空")
+
+        if getattr(self, "ffmpeg_process", None) is not None:
+            raise RuntimeError("FFmpeg 已经初始化")
+
+        # 1. 校验 ffmpeg 是否存在
+        if shutil.which(getattr(self, "ffmpeg_path", "ffmpeg")) is None:
+            raise RuntimeError(f"未找到 ffmpeg 可执行文件: {getattr(self, 'ffmpeg_path', 'ffmpeg')}")
+
+        # 2. 设置 HTTP headers 避免 403
+        headers = (
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+            "Referer: https://live.bilibili.com/\r\n"
+        )
+
+        output_path = self.prepare_output_path("wav")
+
+        self.url = self.url.strip()
+
+        cmd = [
+            self.ffmpeg_path,
+            "-loglevel", "info",
+            "-fflags", "nobuffer",
+            "-headers", headers,
+            "-i", self.url,
+
+            "-map", "0:a:0",
+            "-acodec", "pcm_s16le",
+            "-ar", "48000",
+            
+            str(output_path)
+        ]
+
+        logger.info("启动 FFmpeg: %s", " ".join(cmd))
+
+        # 3. 启动子进程（非阻塞）
+        self.ffmpeg_process = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
+        )
+        print(self.ffmpeg_process.stdout)
+
+        # 4. 给 FFmpeg 一点时间判断它是否秒崩
+        await asyncio.sleep(1)
+
+        if self.ffmpeg_process.poll() is not None:
+            stderr = self.ffmpeg_process.stderr.read() # type: ignore
+            self.ffmpeg_process = None
+            raise RuntimeError(f"FFmpeg 启动失败:\n{stderr}")
+
+        logger.info("FFmpeg 初始化成功，进程 PID=%s,开始录制ing.....", self.ffmpeg_process.pid)
+        
+        #返回 PID 以便Client监控
+        return self.ffmpeg_process.pid
+
+
+    async def FFmpeg_stop(self) -> None:
+
+        """
+        释放 FFmpeg 资源
+        终止子进程
+        """
+
+        proc = getattr(self, "ffmpeg_process", None)
+        if proc is None:
+            return
+
+        logger.info("正在停止 FFmpeg，PID=%s", proc.pid)
+
+        # 如果已经退出，直接清理
+        if proc.poll() is not None:
+            self.ffmpeg_process = None
+            return
+
+        # 1. 尝试优雅退出
+        try:
+            proc.terminate()
+        except Exception as e:
+            logger.warning("FFmpeg terminate 失败: %s", e)
+
+        # 2. 等待一小段时间
+        try:
+            await asyncio.wait_for(
+                asyncio.to_thread(proc.wait),
+                timeout=3
+            )
+        except asyncio.TimeoutError:
+            logger.warning("FFmpeg 未在超时内退出，强制 kill，PID=%s", proc.pid)
+            try:
+                proc.kill()
+            except Exception as e:
+                logger.error("FFmpeg kill 失败: %s", e)
+
+        # 3. 回收管道，避免资源泄漏
+        try:
+            if proc.stdout:
+                proc.stdout.close()
+            if proc.stderr:
+                proc.stderr.close()
+        except Exception:
+            pass
+
+        self.ffmpeg_process = None
+        logger.info("FFmpeg 已停止")
+
 
 
     async def fetch_room_id(self) -> None:
@@ -203,117 +319,6 @@ class AudioCrawler(BaseAudioCrawler):
         raise RuntimeError("达到最大重试次数但未成功获取数据")
     
 
-    async def FFmpeg_init(self):
-
-        if not self.url:
-            raise RuntimeError("FFmpeg 初始化失败：url 为空")
-
-        if getattr(self, "ffmpeg_process", None) is not None:
-            raise RuntimeError("FFmpeg 已经初始化")
-
-        # 1. 校验 ffmpeg 是否存在
-        if shutil.which(getattr(self, "ffmpeg_path", "ffmpeg")) is None:
-            raise RuntimeError(f"未找到 ffmpeg 可执行文件: {getattr(self, 'ffmpeg_path', 'ffmpeg')}")
-
-        # 2. 设置 HTTP headers 避免 403
-        headers = (
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
-            "Referer: https://live.bilibili.com/\r\n"
-        )
-
-        output_path = self.prepare_output_path("wav")
-
-        self.url = self.url.strip()
-
-        cmd = [
-            self.ffmpeg_path,
-            "-loglevel", "info",
-            "-fflags", "nobuffer",
-            "-headers", headers,
-            "-i", self.url,
-
-            "-map", "0:a:0",
-            "-acodec", "pcm_s16le",
-            "-ar", "48000",
-            
-            str(output_path)
-        ]
-
-        logger.info("启动 FFmpeg: %s", " ".join(cmd))
-
-        # 3. 启动子进程（非阻塞）
-        self.ffmpeg_process = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
-        )
-        print(self.ffmpeg_process.stdout)
-
-        # 4. 给 FFmpeg 一点时间判断它是否秒崩
-        await asyncio.sleep(1)
-
-        if self.ffmpeg_process.poll() is not None:
-            stderr = self.ffmpeg_process.stderr.read() # type: ignore
-            self.ffmpeg_process = None
-            raise RuntimeError(f"FFmpeg 启动失败:\n{stderr}")
-
-        logger.info("FFmpeg 初始化成功，进程 PID=%s,开始录制ing.....", self.ffmpeg_process.pid)
-        
-        #返回 PID 以便Client监控
-        return self.ffmpeg_process.pid
-
-
-    async def FFmpeg_stop(self) -> None:
-
-        """
-        释放 FFmpeg 资源
-        终止子进程
-        """
-
-        proc = getattr(self, "ffmpeg_process", None)
-        if proc is None:
-            return
-
-        logger.info("正在停止 FFmpeg，PID=%s", proc.pid)
-
-        # 如果已经退出，直接清理
-        if proc.poll() is not None:
-            self.ffmpeg_process = None
-            return
-
-        # 1. 尝试优雅退出
-        try:
-            proc.terminate()
-        except Exception as e:
-            logger.warning("FFmpeg terminate 失败: %s", e)
-
-        # 2. 等待一小段时间
-        try:
-            await asyncio.wait_for(
-                asyncio.to_thread(proc.wait),
-                timeout=3
-            )
-        except asyncio.TimeoutError:
-            logger.warning("FFmpeg 未在超时内退出，强制 kill，PID=%s", proc.pid)
-            try:
-                proc.kill()
-            except Exception as e:
-                logger.error("FFmpeg kill 失败: %s", e)
-
-        # 3. 回收管道，避免资源泄漏
-        try:
-            if proc.stdout:
-                proc.stdout.close()
-            if proc.stderr:
-                proc.stderr.close()
-        except Exception:
-            pass
-
-        self.ffmpeg_process = None
-        logger.info("FFmpeg 已停止")
-
-
     def prepare_output_path(self, suffix: str = "wav") -> Path:
             logger.info("准备输出路径，原始路径: %s", self.output_path)
             p = Path(self.output_path)
@@ -330,9 +335,43 @@ class AudioCrawler(BaseAudioCrawler):
     
     @property
     def is_healthy(self) -> bool:
-        """检查 FFmpeg 进程是否仍在运行"""
-        #TODO: 添加更多健康检查逻辑：测试文件大小增加状况（ez）监控进程输出情况
-        if not self.is_running or self.ffmpeg_process is None:
-            return False
-        # poll() 返回 None 表示进程仍在运行
-        return self.ffmpeg_process.poll() is None
+            """
+            聪明做法：双重维度健康检查
+            1. 进程存活 (Poll Check)
+            2. 数据产出 (File Growth Check)
+            """
+            #step 1: process alive check
+            if not self.is_running or self.ffmpeg_process is None:
+                return False
+            if self.ffmpeg_process.poll() is not None:
+                logger.error(f"Room {self.origin_room_id} FFmpeg 进程已意外退出")
+                return False
+            
+            #step 2: file growth check
+            if self.output_path and self.output_path.exists():
+                try:
+                    current_size = self.output_path.stat().st_size
+                    now = asyncio.get_event_loop().time()
+
+                    # 如果文件变大了，说明正在正常写入
+                    if current_size > self.last_file_size:
+                        self.last_file_size = current_size
+                        self.last_check_time = now
+                        return True
+                    
+                    # 如果文件大小没变，计算卡死了多久
+                    duration = now - self.last_check_time
+                    if duration > self.stagnant_threshold:
+                        logger.warning(
+                            f"Room {self.origin_room_id} 录制假死：文件大小 {duration:.1f}s 未增长 "
+                            f"(Size: {current_size} bytes)"
+                        )
+                        return False
+                    
+                    # 在阈值时间内，暂时认为健康（可能缓冲区还没刷盘）
+                    return True
+                except Exception as e:
+                    logger.error(f"检查文件大小时出错: {e}")
+                    return False
+            
+            return True

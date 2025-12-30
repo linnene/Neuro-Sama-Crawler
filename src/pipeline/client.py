@@ -1,8 +1,7 @@
 import os
 import logging
 import asyncio
-from typing import Optional
-from pathlib import Path
+from typing import Optional , Dict
 from crawler import DanmakuCrawler,AudioCrawler
 
 from config import config
@@ -17,95 +16,83 @@ class APIClient:
     def __init__(self):
         #暂时注销
         # self.api_url = api_url
-        self.base_Output_dir = config.BASE_DIR
-        self.base_Audio_dir = config.BASE_DIR
+        self.base_Output_dir = config.BASE_DIR / "danmaku_output"
+        self.base_Audio_dir = config.BASE_DIR / "Audio_output"
 
-
-        #管理爬虫生命周期
-        self._active_crawlers: set[str] = set()
+        # 管理弹幕爬虫：room_id -> DanmakuCrawler
+        self._active_crawlers: Dict[int, DanmakuCrawler] = {}
         
-        #管理音频爬虫生命周期
-        self._active_Audiocrawlers: set[str] = set()
+        # 管理音频爬虫：room_id -> AudioCrawler
+        self._active_audio_crawlers: Dict[int, AudioCrawler] = {}
+
+        # 启动后台监控任务
+        self._monitor_task = asyncio.create_task(self._monitor_loop())
+
+#------------------------------------------------------------------------------------------------------
+
+    def register_Audiocrawler(self, adCrawler:Optional[AudioCrawler]):
+        """
+        用于注册AudioCrawler
+        """
+        #进程启动之后再注册，拿到FFmeg进程的id
+        if adCrawler is not None:
+
+            os.makedirs(self.base_Audio_dir, exist_ok=True)
+            room_id = adCrawler.origin_room_id
+            self._active_audio_crawlers[room_id] = adCrawler
+
+            logger.info(f"AudioCrawler registered for room: {room_id}")
+
+    def register_Danmakucrawler(self, dmCrawler: Optional[DanmakuCrawler]):
+        """
+        用于注册danmakuCrawler,创建对应的文件写入句柄
+        """
+        if dmCrawler is not None:
+            os.makedirs(self.base_Output_dir, exist_ok=True)
+            path = os.path.join(self.base_Output_dir, f"{dmCrawler.room_id}.jsonl")
+            
+            f = open(path, "a", encoding="utf-8")
+            dmCrawler._file = f
+
+            self._active_crawlers[int(dmCrawler.room_id)] = dmCrawler
 
     
-
-    def register_Audiocrawler(self, AudioCrawler:Optional[AudioCrawler]):
-        if AudioCrawler is not None:
-            os.makedirs(self.base_Output_dir, exist_ok=True)
-        pass
-
-    def register_crawler(self, crawler: Optional[DanmakuCrawler]):
+    async def _monitor_loop(self):
         """
-        用于注册crawler,创建对应的文件写入句柄
+        后台循环：每隔 30 秒检查一次所有 AudioCrawler 的进程健康度
         """
-        if crawler is not None:
-            os.makedirs(self.base_Output_dir, exist_ok=True)
-            path = os.path.join(self.base_Output_dir, f"{crawler.room_id}.jsonl")
+        try:
+            while True:
+                await asyncio.sleep(20)
+                for room_id, crawler in list(self._active_audio_crawlers.items()):
+                    if not crawler.is_healthy:
+                        logger.error(f"监控发现房间 {room_id} 录制异常，尝试自动重启...")
+                        # automatically restart the crawler
+                        await self._restart_crawler(crawler)
+                await asyncio.sleep(15) # 监控频率
+        except Exception as e:
+            logger.error(f"Health monitor loop error: {e}")
+            await asyncio.sleep(5)  
+        #TODO：添加对 DanmakuCrawler 健康度的轮询
 
-            f = open(path, "a", encoding="utf-8")
-            crawler._file = f
+#------------------------------------------------------------------------------------------------------
 
-            # 写入注册元信息：注册时间和房间号，便于后续审计
-            try:
-                from datetime import datetime
-                meta = {
-                    "event": "register",
-                    "room_id": crawler.room_id,
-                    "registered_at": datetime.now().isoformat()
-                }
-                f.write("#META# " + ("%s\n" % (meta)) )
-                f.flush()
-            except Exception:
-                logger.exception("Failed to write crawler registration metadata")
-
-            self._active_crawlers.add(crawler.room_id)
-        
-
-    async def on_crawler_stop(self, crawler:Optional[DanmakuCrawler]):
+    async def on_crawler_stop(self, dmCrawler:Optional[DanmakuCrawler]):
         """
         用于crawler停止时的回调
         """
-        #TODO: Implement any finalization logic needed when crawler stops
-        if crawler is not None:
-            f = crawler._file
+        if dmCrawler is not None:
+            f = dmCrawler._file
             if f:
                 f.close()
-            self._active_crawlers.discard(crawler.room_id)
-            crawler.stop
+            dmCrawler.stop
 
-    async def send_data(self):
-            """
-            调用 shell 脚本，将本地 output 目录中的数据推送出去
-            """
-            script_path = Path(config.PUSH_SCRIPT_PATH)
-
-            if not script_path.exists():
-                logger.error(f"Push script not found: {script_path}")
-                return
-
-            logger.info("Starting data push via shell script...")
-
-            try:
-                process = await asyncio.create_subprocess_exec(
-                    str(script_path),
-                    stdout=asyncio.subprocess.PIPE,
-                    stderr=asyncio.subprocess.PIPE,
-                )
-
-                stdout, stderr = await process.communicate()
-
-                if process.returncode != 0:
-                    logger.error("Data push failed")
-                    if stdout:
-                        logger.error(stdout.decode())
-                    if stderr:
-                        logger.error(stderr.decode())
-                else:
-                    logger.info("Data push completed successfully")
-                    if stdout:
-                        logger.debug(stdout.decode())
-
-            except Exception:
-                logger.exception("Failed to execute push script")
-
-
+    async def _restart_crawler(self, adCrawler: AudioCrawler):
+        """简单的重启策略"""
+        try:
+            await adCrawler.stop()
+            await asyncio.sleep(8)
+            await adCrawler.start()
+            logger.info(f"房间 {adCrawler.origin_room_id} 自动重启指令已发出")
+        except Exception as e:
+            logger.error(f"自动重启房间 {adCrawler.origin_room_id} 失败: {e}")

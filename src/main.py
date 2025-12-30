@@ -42,7 +42,7 @@ async def run():
                             # Start Danmaku Crawler
                             crawler = DanmakuCrawler(room_id)
                             # TODO: Pass pipeline to crawler
-                            cilent.register_crawler(crawler)
+                            cilent.register_Danmakucrawler(crawler)
                             
                             task = asyncio.create_task(crawler.start())
                             

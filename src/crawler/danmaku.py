@@ -2,10 +2,13 @@
 # coding=utf-8
 from .base import BaseCrawler
 
+from datetime import datetime
+
+# 尝试导入 ZoneInfo，并准备好回退逻辑
+from zoneinfo import ZoneInfo
 import json
 import logging
 import asyncio
-from datetime import datetime
 from zoneinfo import ZoneInfo
 from selenium import webdriver
 from typing import Optional,Callable, Awaitable,IO
@@ -24,6 +27,7 @@ class DanmakuCrawler(BaseCrawler):
         self._is_running = False
         self.driver = None
         self._file: IO | None = None
+        self.is_registered: bool = False
 
         #用于爬虫停止时的回调
         self.on_stop: Optional[Callable[[str], Awaitable[None]]] = None
@@ -107,10 +111,8 @@ class DanmakuCrawler(BaseCrawler):
                     # TODO: 直接写入文件，本地存储-[√]
                     await self.collect(danmaku, self.room_id)
 
-
                 # 更新已处理集合
                 seen_cts = current_cts
-
 
                 await asyncio.sleep(0.5)
         except Exception as e:
@@ -119,7 +121,6 @@ class DanmakuCrawler(BaseCrawler):
             await self.stop()
             if self.on_stop:
                 await self.on_stop(self.room_id)
-
 
     async def stop(self):
         self._is_running = False
@@ -133,19 +134,40 @@ class DanmakuCrawler(BaseCrawler):
 
 
     async def collect(self, danmaku: dict, room_id: str):
-        """
-        收集弹幕数据并写入对应文件
-        这里假设 danmaku 是一个字典，包含弹幕的相关信息
-        写入时自动过滤 ct 字段，并增加 now 字段（当前时间）
-        """
         f = self._file
         if not f:
             logger.error(f"No file handle for crawler_id {room_id}")
             return
-        now_str = datetime.now(ZoneInfo("Asia/Shanghai"))
-        # 过滤 ct 字段并加 now 字段
+        
+        # 使用安全的时区获取方法
+        now_dt = get_shanghai_now()
+        
+        # 首次写入元数据
+        if not getattr(self, "is_registered", False):
+            try:
+                meta = {
+                    "event": "register",
+                    "room_id": self.room_id,
+                    "registered_at": now_dt.isoformat()
+                }
+                f.write(f"#META# {json.dumps(meta)}\n")
+                f.flush()
+                self.is_registered = True
+            except Exception:
+                logger.exception("Failed to write crawler registration metadata")
+
+        # 过滤并写入弹幕
         to_write = {k: v for k, v in danmaku.items() if k != "ct"}
-        to_write["data_ct"] = now_str.isoformat()
+        to_write["data_ct"] = now_dt.isoformat()
         
         f.write(json.dumps(to_write, ensure_ascii=False) + "\n")
         f.flush()
+
+
+def get_shanghai_now():
+    try:
+        return datetime.now(ZoneInfo("Asia/Shanghai"))
+    except Exception:
+        # 如果时区库缺失，记录一次警告并返回本地时间
+        logger.warning("时区 Asia/Shanghai 未找到，已回退到本地时间。请安装 tzdata: pip install tzdata")
+        return datetime.now().astimezone()
