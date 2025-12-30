@@ -4,7 +4,7 @@ from typing import Dict
 from config import config
 from utils import setup_logger
 from monitor import BilibiliMonitor
-from crawler import DanmakuCrawler
+from crawler import DanmakuCrawler, AudioCrawler
 from pipeline import APIClient
 
 logger = setup_logger()
@@ -16,7 +16,6 @@ async def run():
     # Initialize modules
     monitor = BilibiliMonitor()
     cilent = APIClient()
-    # pipeline = APIClient(config.BACKEND_API_URL, config.BACKEND_API_TOKEN) # TODO: Pass to crawler
     
     # State management
     # room_id -> {'crawler': DanmakuCrawler, 'task': asyncio.Task}

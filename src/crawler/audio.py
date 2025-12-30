@@ -4,6 +4,7 @@ import aiohttp
 import asyncio
 import subprocess
 import shutil
+import os
 
 from pathlib import Path
 from datetime import datetime
@@ -25,10 +26,10 @@ class AudioCrawler(BaseAudioCrawler):
         self.output_path = Path(output_path) if output_path is not None else Path("recordings")
 
         # 临时流url
-        self.url = None
+        self.url: str|None = None
 
         self.ffmpeg_process: subprocess.Popen | None = None
-        self.ffmpeg_path: str = "D:/ffmpeg/ffmpeg-7.1.1-essentials_build/bin/ffmpeg.exe"
+        self.ffmpeg_path = os.getenv("FFMPEG_PATH") or shutil.which("ffmpeg") or "D:/ffmpeg/.../ffmpeg.exe"
         
 
     async def start(self) -> None:
@@ -155,16 +156,6 @@ class AudioCrawler(BaseAudioCrawler):
         raise RuntimeError("未找到可用的 http_stream + flv + avc 播放流")
 
 
-    async def get_audio_stream(self):
-        """
-        获取音频流的异步生成器
-        :yield: 音频数据块
-
-        1. 用异步 HTTP 持续读取字节流
-        """
-        yield b""  
-
-
     async def _fetch_json(self, url: str, params: dict | None = None, max_retries: int = 3, timeout: int = 10) -> dict:
         
         """
@@ -214,7 +205,6 @@ class AudioCrawler(BaseAudioCrawler):
 
     async def FFmpeg_init(self):
 
-
         if not self.url:
             raise RuntimeError("FFmpeg 初始化失败：url 为空")
 
@@ -227,12 +217,13 @@ class AudioCrawler(BaseAudioCrawler):
 
         # 2. 设置 HTTP headers 避免 403
         headers = (
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-            "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
-            f"Referer: https://live.bilibili.com/{self.origin_room_id}\r\n"
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36\r\n"
+            "Referer: https://live.bilibili.com/\r\n"
         )
 
         output_path = self.prepare_output_path("wav")
+
+        self.url = self.url.strip()
 
         cmd = [
             self.ffmpeg_path,
@@ -268,6 +259,9 @@ class AudioCrawler(BaseAudioCrawler):
             raise RuntimeError(f"FFmpeg 启动失败:\n{stderr}")
 
         logger.info("FFmpeg 初始化成功，进程 PID=%s,开始录制ing.....", self.ffmpeg_process.pid)
+        
+        #返回 PID 以便Client监控
+        return self.ffmpeg_process.pid
 
 
     async def FFmpeg_stop(self) -> None:
@@ -333,3 +327,12 @@ class AudioCrawler(BaseAudioCrawler):
             # 否则按目录处理，生成 room_{origin_room_id}_{timestamp}.suffix
 
             return p / f"room_{self.origin_room_id}_{ts}.{suffix}"
+    
+    @property
+    def is_healthy(self) -> bool:
+        """检查 FFmpeg 进程是否仍在运行"""
+        #TODO: 添加更多健康检查逻辑：测试文件大小增加状况（ez）监控进程输出情况
+        if not self.is_running or self.ffmpeg_process is None:
+            return False
+        # poll() 返回 None 表示进程仍在运行
+        return self.ffmpeg_process.poll() is None

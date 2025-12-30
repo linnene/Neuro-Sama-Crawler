@@ -3,7 +3,7 @@ import logging
 import asyncio
 from typing import Optional
 from pathlib import Path
-from crawler.danmaku import DanmakuCrawler
+from crawler import DanmakuCrawler,AudioCrawler
 
 from config import config
 
@@ -17,19 +17,30 @@ class APIClient:
     def __init__(self):
         #暂时注销
         # self.api_url = api_url
-        
-        self.base_dir = config.BASE_DIR
+        self.base_Output_dir = config.BASE_DIR
+        self.base_Audio_dir = config.BASE_DIR
+
 
         #管理爬虫生命周期
         self._active_crawlers: set[str] = set()
+        
+        #管理音频爬虫生命周期
+        self._active_Audiocrawlers: set[str] = set()
+
+    
+
+    def register_Audiocrawler(self, AudioCrawler:Optional[AudioCrawler]):
+        if AudioCrawler is not None:
+            os.makedirs(self.base_Output_dir, exist_ok=True)
+        pass
 
     def register_crawler(self, crawler: Optional[DanmakuCrawler]):
         """
         用于注册crawler,创建对应的文件写入句柄
         """
         if crawler is not None:
-            os.makedirs(self.base_dir, exist_ok=True)
-            path = os.path.join(self.base_dir, f"{crawler.room_id}.jsonl")
+            os.makedirs(self.base_Output_dir, exist_ok=True)
+            path = os.path.join(self.base_Output_dir, f"{crawler.room_id}.jsonl")
 
             f = open(path, "a", encoding="utf-8")
             crawler._file = f
@@ -96,3 +107,5 @@ class APIClient:
 
             except Exception:
                 logger.exception("Failed to execute push script")
+
+
