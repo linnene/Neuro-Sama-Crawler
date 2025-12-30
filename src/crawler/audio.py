@@ -27,7 +27,6 @@ class AudioCrawler(BaseAudioCrawler):
         self.output_path = Path(output_path) if output_path is not None else Path("recordings")
         self.last_file_size: int = 0
         self.last_check_time: float = 0
-        self.stagnant_threshold: int = 30  # 容忍文件不增长的最大秒数
 
         # 临时流url
         self.url: str|None = None
@@ -43,6 +42,7 @@ class AudioCrawler(BaseAudioCrawler):
         
         :param self: 说明
         """
+        self.output_path = self.prepare_output_path("wav")
         if self.is_running:
             logger.warning("Audio crawler is already running")
             return 
@@ -86,25 +86,22 @@ class AudioCrawler(BaseAudioCrawler):
             "Referer: https://live.bilibili.com/\r\n"
         )
 
-        output_path = self.prepare_output_path("wav")
-
         self.url = self.url.strip()
 
         cmd = [
             self.ffmpeg_path,
             "-loglevel", "info",
-            "-fflags", "nobuffer",
+            "-stats",
             "-headers", headers,
+            "-fflags", "nobuffer",
             "-i", self.url,
 
             "-map", "0:a:0",
             "-acodec", "pcm_s16le",
             "-ar", "48000",
             
-            str(output_path)
+            str(self.output_path)
         ]
-
-        logger.info("启动 FFmpeg: %s", " ".join(cmd))
 
         # 3. 启动子进程（非阻塞）
         self.ffmpeg_process = subprocess.Popen(
@@ -113,7 +110,6 @@ class AudioCrawler(BaseAudioCrawler):
             stderr=subprocess.PIPE,
             text=True
         )
-        print(self.ffmpeg_process.stdout)
 
         # 4. 给 FFmpeg 一点时间判断它是否秒崩
         await asyncio.sleep(1)
@@ -121,7 +117,7 @@ class AudioCrawler(BaseAudioCrawler):
         if self.ffmpeg_process.poll() is not None:
             stderr = self.ffmpeg_process.stderr.read() # type: ignore
             self.ffmpeg_process = None
-            raise RuntimeError(f"FFmpeg 启动失败:\n{stderr}")
+            raise RuntimeError(f"FFmpeg 初始化失败:\n{stderr}")
 
         logger.info("FFmpeg 初始化成功，进程 PID=%s,开始录制ing.....", self.ffmpeg_process.pid)
         
@@ -333,6 +329,7 @@ class AudioCrawler(BaseAudioCrawler):
 
             return p / f"room_{self.origin_room_id}_{ts}.{suffix}"
     
+    #进程健康度检查
     @property
     def is_healthy(self) -> bool:
             """
@@ -348,30 +345,21 @@ class AudioCrawler(BaseAudioCrawler):
                 return False
             
             #step 2: file growth check
+
+            #TODO: 有BUG，导致一直重试
+            
             if self.output_path and self.output_path.exists():
                 try:
                     current_size = self.output_path.stat().st_size
-                    now = asyncio.get_event_loop().time()
-
+                    
                     # 如果文件变大了，说明正在正常写入
                     if current_size > self.last_file_size:
                         self.last_file_size = current_size
-                        self.last_check_time = now
                         return True
-                    
-                    # 如果文件大小没变，计算卡死了多久
-                    duration = now - self.last_check_time
-                    if duration > self.stagnant_threshold:
-                        logger.warning(
-                            f"Room {self.origin_room_id} 录制假死：文件大小 {duration:.1f}s 未增长 "
-                            f"(Size: {current_size} bytes)"
-                        )
+                    else:
                         return False
-                    
-                    # 在阈值时间内，暂时认为健康（可能缓冲区还没刷盘）
-                    return True
                 except Exception as e:
                     logger.error(f"检查文件大小时出错: {e}")
                     return False
-            
+                
             return True

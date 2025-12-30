@@ -14,5 +14,7 @@ wheels/
 
 .vscode/settings.json
 
-output/
-Audio_output/
+output/Audio_output/*
+output/danmaku_output/*
+.vscode/
+.pytest_cache/

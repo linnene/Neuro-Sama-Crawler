@@ -59,7 +59,7 @@ class APIClient:
     
     async def _monitor_loop(self):
         """
-        后台循环：每隔 30 秒检查一次所有 AudioCrawler 的进程健康度
+        检查所有 AudioCrawler 的进程健康度
         """
         try:
             while True:
@@ -69,7 +69,7 @@ class APIClient:
                         logger.error(f"监控发现房间 {room_id} 录制异常，尝试自动重启...")
                         # automatically restart the crawler
                         await self._restart_crawler(crawler)
-                await asyncio.sleep(15) # 监控频率
+                await asyncio.sleep(80) # 监控频率
         except Exception as e:
             logger.error(f"Health monitor loop error: {e}")
             await asyncio.sleep(5)  
@@ -77,22 +77,28 @@ class APIClient:
 
 #------------------------------------------------------------------------------------------------------
 
-    async def on_crawler_stop(self, dmCrawler:Optional[DanmakuCrawler]):
+    async def on_crawler_stop(self,room_id: int):
         """
         用于crawler停止时的回调
         """
-        if dmCrawler is not None:
-            f = dmCrawler._file
-            if f:
-                f.close()
-            dmCrawler.stop
+        if room_id in self._active_crawlers:
+            dmCrawler = self._active_crawlers.pop(room_id)
+            await dmCrawler.stop()
+
+    async def on_audio_stop(self, room_id: int):
+        """
+        用于AudioCrawler停止时的回调
+        """
+        if room_id in self._active_audio_crawlers:
+            adCrawler = self._active_audio_crawlers.pop(room_id)
+            await adCrawler.stop()
 
     async def _restart_crawler(self, adCrawler: AudioCrawler):
-        """简单的重启策略"""
+        """重启策略"""
         try:
-            await adCrawler.stop()
-            await asyncio.sleep(8)
-            await adCrawler.start()
             logger.info(f"房间 {adCrawler.origin_room_id} 自动重启指令已发出")
+            await adCrawler.stop()
+            await asyncio.sleep(10)
+            await adCrawler.start()
         except Exception as e:
             logger.error(f"自动重启房间 {adCrawler.origin_room_id} 失败: {e}")

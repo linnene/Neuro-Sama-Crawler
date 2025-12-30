@@ -13,7 +13,6 @@ class Config:
     """
     # Output base directory
     BASE_DIR = ROOT_DIR / "output"
-    BASE_Audio_DIR = ROOT_DIR / "Audio_output"
 
 
     # backend API configuration
