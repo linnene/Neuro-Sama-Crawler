@@ -11,7 +11,7 @@ logger = setup_logger()
 
 # --- 辅助逻辑抽离 ---
 
-async def start_room_services(room_id: str,  cilent, active_sessions: Dict):
+async def start_room_services(room_id: str, cilent, active_sessions: Dict):
     """启动指定房间的弹幕和音频服务"""
     logger.info(f"Room {room_id} is LIVE! Starting services...")
     
@@ -77,10 +77,10 @@ async def run():
                     
                     if is_live and room_id not in active_sessions:
                         logger.info(f"Room {room_id} is aLIVE-[✔]")
-                        await start_room_services(room_id,  cilent, active_sessions)
+                        await start_room_services(room_id,cilent,active_sessions)
                         
                     elif not is_live and room_id in active_sessions:
-                        await stop_room_services(room_id, cilent, active_sessions)
+                        await stop_room_services(room_id,cilent, active_sessions)
                             
                 except Exception as e:
                     logger.error(f"Error monitoring room {room_id}: {e}")

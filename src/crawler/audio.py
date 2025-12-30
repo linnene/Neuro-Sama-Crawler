@@ -24,7 +24,8 @@ class AudioCrawler(BaseAudioCrawler):
         self.is_running: bool = False
 
         # 兼容 None / str / Path；默认目录为 recordings
-        self.output_path = Path(output_path) if output_path is not None else Path("recordings")
+        self.filePath = None
+        self.output_path = Path(output_path) if output_path is not None else Path("")
         self.last_file_size: int = 0
         self.last_check_time: float = 0
 
@@ -42,17 +43,16 @@ class AudioCrawler(BaseAudioCrawler):
         
         :param self: 说明
         """
-        self.output_path = self.prepare_output_path("wav")
         if self.is_running:
             logger.warning("Audio crawler is already running")
             return 
-        
         if self.room_id is None:
             await self.fetch_room_id()
 
         # fetch_flv_avc_stream 是 coroutine，需要 await
         json_out = await self.fetch_flv_avc_stream()
         # 临时流url
+        self.filePath = self.prepare_output_path("wav") 
         if json_out:
             self.url = json_out["host"] + json_out["base_url"] + json_out["extra"]
         else:
@@ -100,7 +100,7 @@ class AudioCrawler(BaseAudioCrawler):
             "-acodec", "pcm_s16le",
             "-ar", "48000",
             
-            str(self.output_path)
+            str(self.filePath)
         ]
 
         # 3. 启动子进程（非阻塞）
@@ -348,9 +348,9 @@ class AudioCrawler(BaseAudioCrawler):
 
             #TODO: 有BUG，导致一直重试
             
-            if self.output_path and self.output_path.exists():
+            if self.filePath and self.filePath.exists():
                 try:
-                    current_size = self.output_path.stat().st_size
+                    current_size = self.filePath.stat().st_size
                     
                     # 如果文件变大了，说明正在正常写入
                     if current_size > self.last_file_size:

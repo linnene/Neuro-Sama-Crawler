@@ -27,4 +27,4 @@ COPY . .
 # 5. 最后同步项目
 RUN uv sync --frozen
 
-CMD ["uv", "run", "python", "src/test.py"]
+CMD ["uv", "run", "python", "src/main.py"]

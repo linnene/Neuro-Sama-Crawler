@@ -69,7 +69,7 @@ class APIClient:
                         logger.error(f"监控发现房间 {room_id} 录制异常，尝试自动重启...")
                         # automatically restart the crawler
                         await self._restart_crawler(crawler)
-                await asyncio.sleep(80) # 监控频率
+                await asyncio.sleep(50) # 监控频率
         except Exception as e:
             logger.error(f"Health monitor loop error: {e}")
             await asyncio.sleep(5)  
