@@ -24,3 +24,5 @@ __pycache__/
 *.bak
 
 # 其他不需要的文件夹或文件可按需添加
+output/Audio_output/*
+output/danmaku_output/*

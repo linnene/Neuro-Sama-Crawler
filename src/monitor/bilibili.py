@@ -11,6 +11,19 @@ class BilibiliMonitor(BaseMonitor):
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     }
 
+    async def check_status(self, room_id: str):
+        """
+        检查直播状态
+        live_status: 0=未开播, 1=直播中, 2=轮播
+        """
+        data = await self._fetch_room_data(room_id)
+        if not data:
+            return False
+            
+        is_live = data.get("live_status") == 1
+
+        return is_live
+
     async def _fetch_room_data(self, room_id: str) -> Optional[Dict[str, Any]]:
         """
         内部辅助方法：请求 B 站 API 获取原始数据
@@ -29,21 +42,6 @@ class BilibiliMonitor(BaseMonitor):
         except Exception as e:
             logger.error(f"Failed to fetch Bilibili room info: {e}")
             return None
-
-    async def check_status(self, room_id: str) -> bool:
-        """
-        检查直播状态
-        live_status: 0=未开播, 1=直播中, 2=轮播
-        """
-        data = await self._fetch_room_data(room_id)
-        if not data:
-            return False
-            
-        is_live = data.get("live_status") == 1
-        if is_live:
-            logger.info(f"Room {room_id} is LIVE! Title: {data.get('title')}")
-        
-        return is_live
 
     async def get_room_info(self, room_id: str) -> Dict[str, Any]:
         """

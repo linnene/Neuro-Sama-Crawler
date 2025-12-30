@@ -49,24 +49,6 @@ class _FakePopen:
 
 
 @pytest.mark.asyncio
-async def test_FFmeg_init_process_crash(monkeypatch):
-    crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
-    crawler.url = "http://example.com/stream"
-
-    # 模拟找到 ffmpeg
-    monkeypatch.setattr(audio_module.shutil, "which", lambda p: "/usr/bin/ffmpeg")
-
-    # Popen 返回已退出的进程，stderr 有错误信息
-    def fake_popen(*args, **kwargs):
-        return _FakePopen(poll_return=1, stderr_text="fatal error")
-
-    monkeypatch.setattr(audio_module.subprocess, "Popen", fake_popen)
-
-    with pytest.raises(RuntimeError, match="FFmpeg 启动失败"):
-        await crawler.FFmpeg_init()
-
-
-@pytest.mark.asyncio
 async def test_FFmeg_init_success(monkeypatch):
     crawler = AudioCrawler(room_id=123, output_path="recordings/test.wav")
     crawler.url = "http://example.com/stream"

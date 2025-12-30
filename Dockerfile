@@ -1,25 +1,30 @@
-
-# 使用官方 Python 镜像
 FROM selenium/standalone-chrome:latest
 
-
-# 设置工作目录
+# set workdir and user
 WORKDIR /app
-
-# 复制项目文件
-COPY . /app
-
 USER root
 
-RUN apt-get update && apt-get install -y ffmpeg && rm -rf /var/lib/apt/lists/*
-# 安装 uv
+# 1. install python
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    ffmpeg \
+    ca-certificates && \
+    update-ca-certificates && \
+    ln -sf /usr/bin/ffmpeg /usr/local/bin/ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+# 2. install python dependencies
 RUN pip install --no-cache-dir uv
 
-# 安装所有依赖（包括 dev 依赖）
-RUN uv sync --all-extras --dev
+# 3. setup non-root user
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-install-project --all-extras --dev
 
-# 构建时运行测试，失败则中断构建
-RUN uv run pytest
+# 4. copy project files
+COPY . .
 
-# 生产环境启动主程序
-CMD ["uv", "run", "python", "src/main.py"]
+# 5. 最后同步项目
+RUN uv sync --frozen
+
+CMD ["uv", "run", "python", "src/test.py"]

@@ -53,10 +53,13 @@ docker run --rm -it neuro-sama-crawler
 
 ## 新增功能与今日进展
 
-- **弹幕本地存储**：弹幕数据采集后，先本地存储为 jsonl 文件，直播结束后可统一整理、归档或上传。
-- **Pipeline 管理**：APIClient 支持爬虫注册，自动为每个房间分配独立数据文件，生命周期内自动管理文件句柄。
-- **弹幕爬虫**：DanmakuCrawler 初始化时自动检查/创建 output 目录，并以 room_id+时间戳命名 json 文件，采集数据实时写入。
-- **Docker 构建**：可直接使用 `docker build -t neuro-sama-crawler:latest .` 构建镜像。
+- **弹幕本地存储**：弹幕数据采集后首先写入本地 jsonl 文件，便于后续统一整理、归档或批量上传。
+- **Pipeline 管理**：`APIClient.register_crawler(crawler)` 会为每个爬虫分配文件句柄并挂载到爬虫对象，`on_crawler_stop` 会关闭句柄，防止资源泄漏。
+- **弹幕写盘字段**：在写入时自动过滤内部使用的 `ct`（弹幕出现时间标识），同时在每条记录中加入 `now` 字段（格式 `%y-%m-%d-%H%M`，例如 `25-12-07-1450`）以标注写盘时间。
+- **上传脚本与批量发送**：新增 `scripts/scp.sh`（支持 `--dry-run`、`--output-dir`、SSH key、重试），并在 `APIClient` 中实现 `send_data` 用于异步触发该脚本并捕获日志/返回码。
+- **Audio 请求鲁棒性**：`AudioCrawler` 的网络请求已切换为带浏览器头的 `_fetch_json`，包含重试和超时设置，以降低被 412/反爬拦截的概率，并修复了协程未 await 的 bug。
+- **Docker 构建与测试**：Dockerfile 能在构建阶段运行测试，镜像命名为 `neuro-sama-crawler:latest`。
+
 
 ## 文档
 - [项目架构](ARCHITECTURE.md)

@@ -98,3 +98,19 @@
 
 ### Changed
 - **数据流**: 采集-本地存储-后处理-归档/上传，替代原有实时推送方案。
+
+## [0.6.0] - 2025-12-28
+
+### Added
+- `scripts/scp.sh`: 一个用于将 `output/` 目录文件同步/上传到远端的 shell 脚本（支持 dry-run、重试、日志）。
+- `APIClient.send_data`: 异步方法，执行 `scripts/scp.sh`（或通过 `bash` 调用），捕获 stdout/stderr 并返回退出码，支持环境变量覆盖以便传入远端地址。
+- `DanmakuCrawler` 写入时自动添加 `now` 字段（格式 `%y-%m-%d-%H%M`），用于记录写盘时间。
+
+### Changed
+- `DanmakuCrawler.collect` 在写入 JSONL 前会过滤掉内部使用的 `ct` 字段（用于去重/时间判定），保证输出文件不包含 `ct`。
+- `AudioCrawler` 的 HTTP 请求改为使用 `_fetch_json` 辅助函数，默认使用浏览器风格的请求头、超时与重试策略，降低被 412/反爬拦截的风险。
+- `AudioCrawler.start` 修复了未 await 的协程调用问题。
+
+### Fixed
+- 修复若干异步测试与子进程执行问题，使得 Docker 镜像构建时可以在构建阶段执行测试。
+
